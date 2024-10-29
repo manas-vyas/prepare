@@ -1,0 +1,18 @@
+version: 0.0
+os: windows
+files:
+  - source: .\install.txt
+    destination: c:\temp\CodeDeployExample
+hooks:
+  BeforeInstall:
+    - location: .\scripts\before-install.bat
+      timeout: 900
+  AfterInstall:
+    - location: .\scripts\after-install.bat     
+      timeout: 900
+  ApplicationStart:
+    - location: .\scripts\application-start.bat  
+      timeout: 900
+  ValidateService:
+    - location: .\scripts\validate-service.bat    
+      timeout: 900 
