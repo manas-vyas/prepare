@@ -110,6 +110,37 @@ def lambda_handler(event, context):
         'body': json.dumps('Access keys rotated successfully!')
     }
 
+===================================================================================
+
+import boto3
+import os
+
+def lambda_handler(event, context):
+    # Define the EC2 instance ID to check
+    instance_id = os.getenv('INSTANCE_ID')  # Set this as an environment variable in Lambda
+    ec2 = boto3.client('ec2')
+    
+    try:
+        # Describe the instance
+        response = ec2.describe_instances(InstanceIds=[instance_id])
+        
+        # Get the instance state
+        state = response['Reservations'][0]['Instances'][0]['State']['Name']
+        
+        if state != 'running':
+            # Raise an error if the instance is not running
+            raise Exception(f"EC2 instance {instance_id} is not running. Current state: {state}")
+        
+        return {
+            'statusCode': 200,
+            'body': f"EC2 instance {instance_id} is running."
+        }
+        
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': str(e)
+        }
 
 
 
