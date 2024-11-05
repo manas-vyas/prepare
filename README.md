@@ -113,65 +113,39 @@ def lambda_handler(event, context):
 ===================================================================================
 
 import boto3
-import os
 
 def lambda_handler(event, context):
     ec2 = boto3.client('ec2')
-    codepipeline = boto3.client('codepipeline')
-    
+    codepipeline = boto3.client('codepipeline')  # Create a CodePipeline client
     instance_id = 'i-0018d1f66a0be698f'  # Replace with your instance ID
-    pipeline_name = os.environ.get('PIPELINE_NAME') or event.get('pipeline_name')
     
-    # Fetch the latest pipeline execution ID
-    try:
-        # List pipeline executions for the given pipeline
-        response = codepipeline.list_pipeline_executions(
-            pipelineName=pipeline_name,
-            maxResults=1  # Only fetch the latest execution
-        )
-        
-        # Get the latest pipeline execution ID (if available)
-        pipeline_execution_id = None
-        if 'pipelineExecutionSummaries' in response and len(response['pipelineExecutionSummaries']) > 0:
-            pipeline_execution_id = response['pipelineExecutionSummaries'][0]['pipelineExecutionId']
-        
-        if not pipeline_execution_id:
-            raise Exception(f"Could not find the latest pipeline execution ID for pipeline: {pipeline_name}")
-        
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'body': f"Error fetching pipeline execution ID: {str(e)}"
-        }
+    # Get the job ID from the event if this is triggered by CodePipeline
+    job_id = event.get('CodePipeline.job', {}).get('id')
 
     # Get the instance status
-    try:
-        response = ec2.describe_instance_status(InstanceIds=[instance_id])
-        statuses = response.get('InstanceStatuses', [])
-        
-        # Check if instance is running
-        if statuses and statuses[0]['InstanceState']['Name'] == 'running':
-            return {
-                'statusCode': 200,
-                'body': 'Server is up and running.'
-            }
-        else:
-            # Stop the pipeline execution if the server is not running
-            codepipeline.stop_pipeline_execution(
-                pipelineName=pipeline_name,
-                pipelineExecutionId=pipeline_execution_id,
-                reason=f"EC2 instance {instance_id} is not running. Stopping pipeline."
-            )
-            
-            # Raise exception to stop the pipeline
-            raise Exception("Server is not ready for deployment")
+    response = ec2.describe_instance_status(InstanceIds=[instance_id])
+    statuses = response['InstanceStatuses']
     
-    except Exception as e:
+    # Check if instance is running
+    if statuses and statuses[0]['InstanceState']['Name'] == 'running':
+        # If the instance is running, put a success result in CodePipeline
+        if job_id:  # Only call put_job_success_result if job_id is present
+            codepipeline.put_job_success_result(jobId=job_id)
+        
         return {
-            'statusCode': 500,
-            'body': f"Error checking instance status or stopping pipeline: {str(e)}"
+            'statusCode': 200,
+            'body': 'Server is up and running.'
         }
-
+    else:
+        # If the server is not ready for deployment, return failure in CodePipeline
+        if job_id:
+            codepipeline.put_job_failure_result(jobId=job_id, failureDetails={
+                'message': 'Server is not ready for deployment',
+                'type': 'JobFailed',
+                'externalExecutionId': context.aws_request_id
+            })
+        
+        raise Exception("Server is not ready for deployment")
 
 
 
