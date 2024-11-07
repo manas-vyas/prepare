@@ -1,1 +1,291 @@
-lkmklmklmmlm
+Write powershell script  of below azure pipeline task
+
+variables:
+   XDTSourceSubFolder: '\API'
+   XDTTransformFileName: 'web.$(DeployEnvironment).config'
+   
+steps:
+  task: CopyFiles@2
+  displayName: 'Copy Files to: $ (WebDeploySourceFolder) \$ (Release. EnvironmentName) $ (XDTSourceSubFolder)' 
+  inputs:
+     SourceFolder: '$(WebDeploySourceFolder)$(XDT Source SubFolder)'
+     Contents: 1
+        Web.config
+        $ (XDTTransformFileName)
+     TargetFolder: '$ (WebDeploySourceFolder) \$ (Release. EnvironmentName) $ (XDTSourceSubFolder)'
+     OverWrite: true
+
+
+
+
+# Define variables
+$WebDeploySourceFolder = "C:\path\to\source\folder"  # Replace with your source folder path
+$ReleaseEnvironmentName = "Production"               # Replace with the actual environment name
+$XDTSourceSubFolder = "\API"
+$DeployEnvironment = "Production"                    # Replace with your deployment environment
+$XDTTransformFileName = "web.$DeployEnvironment.config"
+
+# Define Source and Target paths
+$SourceFolder = Join-Path -Path $WebDeploySourceFolder -ChildPath $XDTSourceSubFolder
+$TargetFolder = Join-Path -Path $WebDeploySourceFolder -ChildPath ($ReleaseEnvironmentName + $XDTSourceSubFolder)
+
+# Ensure target directory exists
+if (-Not (Test-Path -Path $TargetFolder)) {
+    New-Item -ItemType Directory -Path $TargetFolder | Out-Null
+}
+
+# Define files to copy
+$filesToCopy = @("web.config", $XDTTransformFileName)
+
+# Copy each file and overwrite if exists
+foreach ($file in $filesToCopy) {
+    $sourceFilePath = Join-Path -Path $SourceFolder -ChildPath $file
+    $targetFilePath = Join-Path -Path $TargetFolder -ChildPath $file
+
+    # Check if source file exists
+    if (Test-Path -Path $sourceFilePath) {
+        Copy-Item -Path $sourceFilePath -Destination $targetFilePath -Force
+        Write-Host "Copied $file to $TargetFolder"
+    }
+    else {
+        Write-Warning "Source file not found: $sourceFilePath"
+    }
+}
+
+
+
+
+
+==========================================================================================================
+Write powershell script  of below azure pipeline task
+
+variables: 
+  XDTSourceSubFolder: '\API'
+  XDTTransform: '$(XDTTransformFileName) => web.config'
+  
+steps:
+  - task: getza.xdttransform.xdttransform-task.xdttransform@2 
+    displayName: 'Apply transforms $(XDTTransform)'
+    inputs:
+       workingFolder: '$(WebDeploySourceFolder) \$(Release. Environment.Name) $(XDTSourceSubFolder)' 
+	   transforms: '$ (XDTTransform)'
+	   
+	   
+	   
+	   
+# Define variables
+$WebDeploySourceFolder = "C:\path\to\source\folder" # Replace with your source folder path
+$ReleaseEnvironmentName = "Production"              # Replace with the actual environment name
+$XDTSourceSubFolder = "\API"
+$XDTTransformFileName = "web.Production.config"     # Replace with your transform file for the environment
+
+# Define paths for the working folder and files
+$WorkingFolder = Join-Path -Path $WebDeploySourceFolder -ChildPath ($ReleaseEnvironmentName + $XDTSourceSubFolder)
+$SourceConfigFile = Join-Path -Path $WorkingFolder -ChildPath $XDTTransformFileName
+$TargetConfigFile = Join-Path -Path $WorkingFolder -ChildPath "web.config"
+
+# Ensure that the source and target files exist
+if (-Not (Test-Path -Path $SourceConfigFile)) {
+    Write-Error "Transform file not found: $SourceConfigFile"
+    exit 1
+}
+if (-Not (Test-Path -Path $TargetConfigFile)) {
+    Write-Error "Target config file not found: $TargetConfigFile"
+    exit 1
+}
+
+# Apply the XDT transform
+try {
+    # Load the XML document of the target and transform files
+    [xml]$targetXml = Get-Content -Path $TargetConfigFile
+    [xml]$transformXml = Get-Content -Path $SourceConfigFile
+
+    # Create a new XmlTransformableDocument object for the target
+    $targetDocument = New-Object Microsoft.Web.XmlTransform.XmlTransformableDocument
+    $targetDocument.PreserveWhitespace = $true
+    $targetDocument.Load($TargetConfigFile)
+
+    # Apply the transformation
+    $xdt = New-Object Microsoft.Web.XmlTransform.XmlTransformation $SourceConfigFile, $true
+    $result = $xdt.Apply($targetDocument)
+
+    # Save the transformed configuration back to the target file
+    if ($result) {
+        $targetDocument.Save($TargetConfigFile)
+        Write-Host "Transformation applied successfully: $SourceConfigFile => $TargetConfigFile"
+    }
+    else {
+        Write-Warning "Transformation failed to apply."
+    }
+}
+catch {
+    Write-Error "An error occurred while applying the XDT transformation: $_"
+    exit 1
+}
+
+=======================================================================================================================================================
+Write powershell script  of below azure pipeline task
+
+
+
+steps:
+- task: Windows MachineFileCopy@2 
+  displayName: 'Copy Web Files'
+  inputs:
+      SourcePath: '$ (WebDeploySourceFolder)' 
+	  MachineNames: '$ (TargetWebServers)' 
+	  AdminUserName: '$ (TFSBuildSALogin) ' 
+	  AdminPassword: '$ (TFSBuildSAPassword)' 
+	  TargetPath: '$ (WebDeployTarget Folder)' 
+	  CleanTargetBeforeCopy: true
+      CopyFilesInParallel: false 
+	  
+
+
+
+
+
+	  
+# Step 1: Define your variables
+$WebDeploySourceFolder = "C:\Path\To\Source"          # Source folder containing files to copy
+$TargetWebServers = "Server1,Server2"                 # Comma-separated list of target web servers
+$TFSBuildSALogin = "adminuser"                         # Admin username for the target servers
+$TFSBuildSAPassword = "password"                       # Admin password for the target servers
+$WebDeployTargetFolder = "C:\inetpub\wwwroot"          # Target folder on the remote servers
+$CleanTargetBeforeCopy = $true                         # Whether to clean target folder before copying
+$CopyFilesInParallel = $false                          # Whether to copy files in parallel (this will be false here)
+
+# Step 2: Define a helper function to clean the target folder
+function Clean-TargetFolder {
+    param (
+        [string]$TargetPath
+    )
+
+    # Check if the target folder exists
+    if (Test-Path $TargetPath) {
+        Write-Host "Cleaning target folder: $TargetPath"
+        
+        # Remove all files and subfolders in the target folder
+        Remove-Item -Path "$TargetPath\*" -Recurse -Force
+    } else {
+        Write-Host "Target folder does not exist. Skipping cleanup."
+    }
+}
+
+# Step 3: Define a helper function to copy files to a remote server
+function Copy-FilesToServer {
+    param (
+        [string]$SourcePath,
+        [string]$TargetPath,
+        [string]$MachineName,
+        [string]$Username,
+        [string]$Password
+    )
+
+    # Create a PSCredential object for authentication
+    $securePassword = ConvertTo-SecureString $Password -AsPlainText -Force
+    $credential = New-Object System.Management.Automation.PSCredential($Username, $securePassword)
+
+    # Use PowerShell Remoting to copy files
+    $session = New-PSSession -ComputerName $MachineName -Credential $credential
+
+    # Copy files using the Copy-Item cmdlet via remoting
+    Write-Host "Copying files to $MachineName:$TargetPath"
+    
+    # Use Copy-Item or robocopy as needed
+    Invoke-Command -Session $session -ScriptBlock {
+        param ($Source, $Target)
+        # Use the Copy-Item cmdlet (or you can use robocopy for large files/folders)
+        Copy-Item -Path $Source\* -Destination $Target -Recurse -Force
+    } -ArgumentList $SourcePath, $TargetPath
+
+    # Clean up the session
+    Remove-PSSession -Session $session
+}
+
+# Step 4: Loop through the target servers
+$TargetWebServers.Split(',') | ForEach-Object {
+    $Server = $_.Trim()
+    
+    # Step 5: Clean target folder before copying (if required)
+    if ($CleanTargetBeforeCopy) {
+        Clean-TargetFolder -TargetPath "$WebDeployTargetFolder\$Server"
+    }
+    
+    # Step 6: Copy files to the remote server
+    Copy-FilesToServer -SourcePath $WebDeploySourceFolder -TargetPath "$WebDeployTargetFolder\$Server" -MachineName $Server -Username $TFSBuildSALogin -Password $TFSBuildSAPassword
+}
+
+Write-Host "File copy operation completed."
+=========================================================================================================================================================================
+Write powershell script  of below azure pipeline task
+
+variables:
+  WebDeployPackageName: 'ROUX.API.zip'
+steps:
+- task: ms-vscs-rm.iiswebapp.iiswebappdeploy-task. IISWebAppDeploy@1 
+  displayName: 'Deploy IIS App: $ (WebDeploy PackageName) '
+  inputs:
+    machinesList: '$ (TargetWebServers)'
+    AdminUserName: '$ (TFSBuildSALogin)'
+    AdminPassword: '$ (TFSBuildSAPassword)'
+    WinRMProtocol: Http
+    WebDeployPackage: '$ (WebDeployTargetFolder) \$ (WebDeployPackageName)'
+    WebsiteName: '$ (WebSiteName)'
+    RemoveAdditionalFiles: true
+    ExcludeFilesFromAppData: true
+    TakeAppOffline: true
+    DeployInParallel: false
+	
+	
+	
+	
+	
+# Define variables
+$WebDeployPackageName = 'ROUX.API.zip'
+$TargetWebServers = 'YOUR_SERVER_IP_OR_NAME'    # Replace with actual server or comma-separated server list
+$AdminUserName = 'YOUR_USERNAME'                # Replace with your admin username
+$AdminPassword = 'YOUR_PASSWORD'                # Replace with your admin password
+$WebDeployTargetFolder = 'C:\path\to\deploy\folder' # Replace with your deploy folder path
+$WebsiteName = 'YOUR_WEBSITE_NAME'              # Replace with your IIS website name
+
+# Securely convert the password to a SecureString
+$securePassword = ConvertTo-SecureString -String $AdminPassword -AsPlainText -Force
+$credentials = New-Object System.Management.Automation.PSCredential ($AdminUserName, $securePassword)
+
+# Deploy to each server
+foreach ($server in $TargetWebServers.Split(',')) {
+    Invoke-Command -ComputerName $server -Credential $credentials -ScriptBlock {
+        param (
+            $WebDeployPackageName,
+            $WebDeployTargetFolder,
+            $WebsiteName
+        )
+
+        # Define the path to the Web Deploy package
+        $packagePath = Join-Path -Path $WebDeployTargetFolder -ChildPath $WebDeployPackageName
+
+        # Check if the Web Deploy package exists
+        if (-Not (Test-Path -Path $packagePath)) {
+            Write-Error "Web Deploy package not found: $packagePath"
+            return
+        }
+
+        # Import WebAdministration module to interact with IIS
+        Import-Module WebAdministration
+
+        # Stop the website to take it offline (optional based on requirements)
+        Stop-Website -Name $WebsiteName
+
+        # Remove additional files, exclude files from App_Data, and take the app offline
+        # Unzip the package to the website's physical path
+        $webAppPath = (Get-Website -Name $WebsiteName).PhysicalPath
+        Expand-Archive -Path $packagePath -DestinationPath $webAppPath -Force
+
+        # Start the website after deployment
+        Start-Website -Name $WebsiteName
+
+        Write-Host "Deployment completed successfully on $server"
+    } -ArgumentList $WebDeployPackageName, $WebDeployTargetFolder, $WebsiteName
+}
+=========================================================================================================================================================================
