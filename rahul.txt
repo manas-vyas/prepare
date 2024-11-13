@@ -1,18 +1,17 @@
 import boto3
-import os
-import json  # To handle JSON formatting for the secret string
+import json
 
 # Initialize Boto3 clients
 sts_client = boto3.client('sts')
 secrets_client = boto3.client('secretsmanager')
 
-# Define account role ARNs (these are examples; replace with actual ARNs)
+# Define account role ARNs
 ROLE_ARNS = {
-    "alpha": "arn:aws:iam::4016077342:role/rotate_access",
+    "alpha": "arn:aws:iam::401681077342:role/rotate_access",
     # Add other accounts here if needed
 }
 
-IAM_USER_NAMES = ["dummy"]  # List of IAM usernames to manage keys for
+IAM_USER_NAMES = ["dummy", "dummysec"]  # List of IAM usernames to manage keys for
 
 # Hardcoded SecretId
 SECRET_ID = "test"  # Replace with your actual SecretId
@@ -20,6 +19,17 @@ SECRET_ID = "test"  # Replace with your actual SecretId
 def lambda_handler(event, context):
     # Use the hardcoded SecretId
     secret_id = SECRET_ID
+
+    # Retrieve the existing secret value
+    try:
+        existing_secret = secrets_client.get_secret_value(SecretId=secret_id)
+        if 'SecretString' in existing_secret:
+            secret_data = json.loads(existing_secret['SecretString'])
+        else:
+            secret_data = {}
+    except Exception as e:
+        print(f"Error retrieving secret {secret_id}: {str(e)}")
+        return
 
     # Iterate over each account configuration (alpha, beta, etc.)
     for account_alias, role_arn in ROLE_ARNS.items():
@@ -43,26 +53,33 @@ def lambda_handler(event, context):
         # Iterate over the list of IAM users
         for iam_user_name in IAM_USER_NAMES:
             try:
+                # List and delete old access keys
+                existing_keys = iam_client.list_access_keys(UserName=iam_user_name)['AccessKeyMetadata']
+                for key in existing_keys:
+                    iam_client.delete_access_key(UserName=iam_user_name, AccessKeyId=key['AccessKeyId'])
+                    print(f"Deleted old access key {key['AccessKeyId']} for {iam_user_name} in {account_alias}.")
+
                 # Create a new access key for the IAM user
                 new_key = iam_client.create_access_key(UserName=iam_user_name)['AccessKey']
                 new_access_key_id = new_key['AccessKeyId']
                 new_secret_access_key = new_key['SecretAccessKey']
                 
-                # Prepare the secret string in the desired format
-                secret_string = {
-                    f"{iam_user_name}.{account_alias}.accesskey": new_access_key_id,
-                    f"{iam_user_name}.{account_alias}.SecretAccessKey": new_secret_access_key
-                }
+                # Update only the specific key-value pairs in the secret data
+                secret_data[f"{iam_user_name}.{account_alias}.accesskey"] = new_access_key_id
+                secret_data[f"{iam_user_name}.{account_alias}.SecretAccessKey"] = new_secret_access_key
 
-                # Convert the secret string to a JSON formatted string
-                secret_string_json = json.dumps(secret_string)
-
-                # Update the provided secret with the new keys
-                secrets_client.update_secret(
-                    SecretId=secret_id,  # Use the hardcoded SecretId
-                    SecretString=secret_string_json  # Pass the JSON string
-                )
-                print(f"Updated secret {secret_id} successfully for {iam_user_name} in account {account_alias}.")
-                
             except Exception as e:
-                print(f"Error creating access key for {iam_user_name} in {account_alias}: {str(e)}")
+                print(f"Error managing access keys for {iam_user_name} in {account_alias}: {str(e)}")
+    
+    # Convert the updated secret data to a JSON formatted string
+    updated_secret_string = json.dumps(secret_data)
+
+    # Update the provided secret with the modified data
+    try:
+        secrets_client.update_secret(
+            SecretId=secret_id,
+            SecretString=updated_secret_string
+        )
+        print(f"Updated secret {secret_id} successfully.")
+    except Exception as e:
+        print(f"Error updating secret {secret_id}: {str(e)}")
