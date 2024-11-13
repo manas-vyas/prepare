@@ -1,60 +1,68 @@
-# Define Variables (you should replace these with actual values or environment variables)
-$SourcePath = "$(WebDeploySourceFolder)"
-$MachineNames = "$(TargetWebServers)"
-$AdminUserName = "$(TFSBuildSALogin)"
-$AdminPassword = "$(TFSBuildSAPassword)"
-$TargetPath = "$(WebDeployTargetFolder)"
-$CleanTargetBeforeCopy = $true
-$CopyFilesInParallel = $false
+import boto3
+import os
+import json  # To handle JSON formatting for the secret string
 
-# Convert password to SecureString
-$SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+# Initialize Boto3 clients
+sts_client = boto3.client('sts')
+secrets_client = boto3.client('secretsmanager')
 
-# Define credentials
-$Credential = New-Object System.Management.Automation.PSCredential($AdminUserName, $SecurePassword)
-
-# Function to Copy Files using Robocopy
-function Copy-WebFiles {
-    param (
-        [string]$Source,
-        [string]$Destination,
-        [string]$Machine
-    )
-
-    # If CleanTargetBeforeCopy is true, we delete the target folder before copying
-    if ($CleanTargetBeforeCopy) {
-        Write-Host "Cleaning target directory: $Destination"
-        Remove-Item -Recurse -Force -Path $Destination
-    }
-
-    # Build Robocopy command
-    $robocopyCommand = "robocopy `"$Source`" `"$Machine\$Destination`" /MIR /Z /XA:H /W:5 /R:3"
-
-    # Execute the robocopy command
-    Write-Host "Copying files to $Machine\$Destination"
-    Invoke-Command -ComputerName $Machine -Credential $Credential -ScriptBlock {
-        param($cmd)
-        Invoke-Expression $cmd
-    } -ArgumentList $robocopyCommand
+# Define account role ARNs (these are examples; replace with actual ARNs)
+ROLE_ARNS = {
+    "alpha": "arn:aws:iam::401681077342:role/rotate_access",
+    # Add other accounts here if needed
 }
 
-# Iterate over each target server and copy the files
-$MachineNames.Split(',') | ForEach-Object {
-    $Machine = $_.Trim()
+IAM_USER_NAMES = ["dummy"]  # List of IAM usernames to manage keys for
 
-    if ($CopyFilesInParallel) {
-        # Using background jobs to copy files in parallel
-        Start-Job -ScriptBlock {
-            param($Source, $Destination, $Machine)
-            Copy-WebFiles -Source $Source -Destination $Destination -Machine $Machine
-        } -ArgumentList $SourcePath, $TargetPath, $Machine
-    } else {
-        # Perform copying sequentially
-        Copy-WebFiles -Source $SourcePath -Destination $TargetPath -Machine $Machine
-    }
-}
+# Hardcoded SecretId
+SECRET_ID = "test"  # Replace with your actual SecretId
 
-# Wait for all background jobs to complete if running in parallel mode
-if ($CopyFilesInParallel) {
-    Get-Job | Wait-Job
-}
+def lambda_handler(event, context):
+    # Use the hardcoded SecretId
+    secret_id = SECRET_ID
+
+    # Iterate over each account configuration (alpha, beta, etc.)
+    for account_alias, role_arn in ROLE_ARNS.items():
+        # Assume role in target account
+        assumed_role = sts_client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName=f"AssumeRoleSession-{account_alias}"
+        )
+        
+        # Retrieve temporary credentials
+        credentials = assumed_role['Credentials']
+        
+        # Create an IAM client in the target account with assumed role credentials
+        iam_client = boto3.client(
+            'iam',
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+
+        # Iterate over the list of IAM users
+        for iam_user_name in IAM_USER_NAMES:
+            try:
+                # Create a new access key for the IAM user
+                new_key = iam_client.create_access_key(UserName=iam_user_name)['AccessKey']
+                new_access_key_id = new_key['AccessKeyId']
+                new_secret_access_key = new_key['SecretAccessKey']
+                
+                # Prepare the secret string in the desired format
+                secret_string = {
+                    f"{iam_user_name}.{account_alias}.accesskey": new_access_key_id,
+                    f"{iam_user_name}.{account_alias}.SecretAccessKey": new_secret_access_key
+                }
+
+                # Convert the secret string to a JSON formatted string
+                secret_string_json = json.dumps(secret_string)
+
+                # Update the provided secret with the new keys
+                secrets_client.update_secret(
+                    SecretId=secret_id,  # Use the hardcoded SecretId
+                    SecretString=secret_string_json  # Pass the JSON string
+                )
+                print(f"Updated secret {secret_id} successfully for {iam_user_name} in account {account_alias}.")
+                
+            except Exception as e:
+                print(f"Error creating access key for {iam_user_name} in {account_alias}: {str(e)}")
