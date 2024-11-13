@@ -8,7 +8,7 @@ secrets_client = boto3.client('secretsmanager')
 
 # Define account role ARNs (these are examples; replace with actual ARNs)
 ROLE_ARNS = {
-    "alpha": "arn:aws:iam::401681077342:role/rotate_access",
+    "alpha": "arn:aws:iam::4016077342:role/rotate_access",
     # Add other accounts here if needed
 }
 
