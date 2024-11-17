@@ -84,3 +84,205 @@ def lambda_handler(event, context):
         print(f"Updated secret {secret_id} successfully.")
     except Exception as e:
         print(f"Error updating secret {secret_id}: {str(e)}")
+
+==================================================================================================================================]
+
+robocopy
+
+# Define Variables (you should replace these with actual values or environment variables)
+$SourcePath = "C:\manas\"
+$MachineNames = "EC2AMAZ-QI688ID"
+$AdminUserName = "Administrator" 
+$AdminPassword = "kIgzNRLn)ZaAW597%Abvr8(a=@J5G?P&"
+$TargetPath = "C:\Target\"
+$CleanTargetBeforeCopy = $true
+$CopyFilesInParallel = $false
+
+# Convert password to SecureString
+$SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+
+# Define credentials
+$Credential = New-Object System.Management.Automation.PSCredential($AdminUserName, $SecurePassword)
+
+# Function to Copy Files using Robocopy
+function Copy-WebFiles {
+    param (
+        [string]$Source,
+        [string]$Destination,
+        [string]$Machine
+    )
+
+    # If CleanTargetBeforeCopy is true, we delete the target folder before copying
+    if ($CleanTargetBeforeCopy) {
+		Write-Output "clean"
+        Write-Host "Cleaning target directory: $Destination"
+        Remove-Item -Recurse -Force -Path $Destination
+    }
+
+    # Build Robocopy command
+    $robocopyCommand = "robocopy `"$Source`" `"$Destination`" /MIR /Z /XA:H /W:5 /R:3"
+
+    # Execute the robocopy command
+    Write-Host "Copying files to $Machine\$Destination"
+    Invoke-Command -ComputerName $Machine -Credential $Credential -ScriptBlock {
+        param($cmd)
+        Invoke-Expression $cmd
+    } -ArgumentList $robocopyCommand
+}
+
+# Iterate over each target server and copy the files
+$MachineNames.Split(',') | ForEach-Object {
+    $Machine = $_.Trim()
+
+    if ($CopyFilesInParallel) {
+        # Using background jobs to copy files in parallel
+		Write-Output "parallel"
+        Start-Job -ScriptBlock {
+            param($Source, $Destination, $Machine)
+            Copy-WebFiles -Source $Source -Destination $Destination -Machine $Machine
+        } -ArgumentList $SourcePath, $TargetPath, $Machine
+    } else {
+        # Perform copying sequentially
+		Write-Output "single"
+        Copy-WebFiles -Source $SourcePath -Destination $TargetPath -Machine $Machine
+    }
+}
+
+# Wait for all background jobs to complete if running in parallel mode
+if ($CopyFilesInParallel) {
+    Get-Job | Wait-Job
+}
+
+
+
+=========================================================================================================================================================================
+Write powershell script  of below azure pipeline task
+
+variables:
+  WebDeployPackageName: 'ROUX.API.zip'
+steps:
+- task: ms-vscs-rm.iiswebapp.iiswebappdeploy-task. IISWebAppDeploy@1 
+  displayName: 'Deploy IIS App: $ (WebDeploy PackageName) '
+  inputs:
+    machinesList: '$ (TargetWebServers)'
+    AdminUserName: '$ (TFSBuildSALogin)'
+    AdminPassword: '$ (TFSBuildSAPassword)'
+    WinRMProtocol: Http
+    WebDeployPackage: '$ (WebDeployTargetFolder) \$ (WebDeployPackageName)'
+    WebsiteName: '$ (WebSiteName)'
+    RemoveAdditionalFiles: true
+    ExcludeFilesFromAppData: true
+    TakeAppOffline: true
+    DeployInParallel: false
+	
+
+
+WebSiteName	                 Name of the IIS website where the application will be deployed.
+VirtualApplication	         (Optional) Virtual directory or application under the IIS website.
+Package	                     Path to the deployment package or files to be deployed.
+RemoveAdditionalFilesFlag	 Removes files from the destination directory that are not part of the deployment package.
+TakeAppOfflineFlag	         Temporarily takes the application offline during deployment (places app_offline.htm).
+SetParametersFile	         Path to the parameters file for transforming deployment settings.
+AdditionalArguments	         Extra arguments to pass to the deployment process.
+XmlTransformation	         Applies XML transformations (e.g., web.config transformations).
+XmlVariableSubstitution	     Replaces tokens in configuration files with pipeline variables.
+EnableCustomDeployment	     Runs a custom PowerShell script during deployment.
+
+
+	
+# Define Variables (Replace these with actual values or environment variables)
+$MachinesList = "EC2AMAZ-QI688ID"                          # List of target machines
+$AdminUserName = "Administrator"                           # Admin username
+$AdminPassword = "kIgzNRLn)ZaAW597%Abvr8(a=@J5G?P&"        # Admin password
+$WinRMProtocol = "Http"                                    # Protocol for WinRM (Http or Https)
+$WebDeployPackage = "C:\Target\static.zip"                            # Deployment package path
+$WebsiteName = "reactapp"                                  # IIS Website name
+$RemoveAdditionalFiles = $true                             # Remove additional files
+$ExcludeFilesFromAppData = $true                           # Exclude files in App_Data
+$TakeAppOffline = $true                                    # Take the app offline during deployment
+$DeployInParallel = $false                                 # Deploy to multiple servers in parallel
+
+# Convert password to SecureString
+$SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+
+# Create credentials object
+$Credential = New-Object System.Management.Automation.PSCredential($AdminUserName, $SecurePassword)
+
+# Function to Deploy IIS Web App
+function Deploy-IISWebApp {
+    param (
+        [string]$Machine,
+        [string]$PackagePath,
+        [string]$SiteName,
+        [PSCredential]$Credential
+    )
+
+    # PowerShell Remoting ScriptBlock for Deployment
+    $ScriptBlock = {
+        param (
+            $PackagePath,
+            $SiteName,
+            $RemoveAdditionalFiles,
+            $ExcludeFilesFromAppData,
+            $TakeAppOffline
+        )
+        # Import Web Deploy Module
+        Import-Module WebAdministration
+
+        Write-Host "Deploying to IIS site: $SiteName"
+
+        # Stop the site temporarily if TakeAppOffline is true
+        if ($TakeAppOffline) {
+            Write-Host "Stopping IIS site: $SiteName"
+            Stop-Website -Name $SiteName
+        }
+
+        # Clean additional files if RemoveAdditionalFiles is true
+        if ($RemoveAdditionalFiles) {
+            Write-Host "Cleaning files in target directory"
+            Remove-Item "C:\manas\*" -Recurse -Force
+        }
+
+        # Extract the deployment package
+        Write-Host "Extracting package: $PackagePath"
+        Expand-Archive -Path $PackagePath -DestinationPath "C:\manas\" -Force
+
+        # Exclude files from App_Data if specified
+        if ($ExcludeFilesFromAppData) {
+            Write-Host "Excluding files in App_Data"
+            Remove-Item "C:\manas\.txt*" -Recurse -Force
+        }
+
+        # Start the site after deployment
+        Write-Host "Starting IIS site: $SiteName"
+        Start-Website -Name $SiteName
+    }
+
+    # Invoke Command on Target Machine
+    Write-Host "Deploying to machine: $Machine"
+    Invoke-Command -ComputerName $Machine -Credential $Credential -ScriptBlock $ScriptBlock -ArgumentList $PackagePath, $SiteName, $RemoveAdditionalFiles, $ExcludeFilesFromAppData, $TakeAppOffline
+}
+
+# Deploy to each machine in the MachinesList
+$Machines = $MachinesList.Split(',')
+
+if ($DeployInParallel) {
+    # Parallel Deployment
+    $Jobs = @()
+    foreach ($Machine in $Machines) {
+        $Jobs += Start-Job -ScriptBlock {
+            param($Machine, $WebDeployPackage, $WebsiteName, $Credential)
+            Deploy-IISWebApp -Machine $Machine -PackagePath $WebDeployPackage -SiteName $WebsiteName -Credential $Credential
+        } -ArgumentList $Machine, $WebDeployPackage, $WebsiteName, $Credential
+    }
+
+    # Wait for all jobs to complete
+    $Jobs | Wait-Job | Receive-Job
+} else {
+    # Sequential Deployment
+    foreach ($Machine in $Machines) {
+        Deploy-IISWebApp -Machine $Machine.Trim() -PackagePath $WebDeployPackage -SiteName $WebsiteName -Credential $Credential
+    }
+}
+
+=========================================================================================================================================================================
