@@ -89,11 +89,24 @@ def lambda_handler(event, context):
 
 robocopy
 
-# Define Variables (you should replace these with actual values or environment variables)
+# Load the AWS PowerShell Module (Ensure the AWS CLI is configured with proper credentials)
+#Import-Module AWSPowerShell
+
+# Fetch secret from AWS Secrets Manager
+$SecretName = "test"  # Replace with your actual secret name
+$Region = "ap-south-1"  # Replace with your AWS region
+
+# Retrieve the secret
+$SecretValue = Get-SECSecretValue -SecretId $SecretName -Region $Region
+
+# Parse the secret value (assuming it is a JSON string with the keys 'AdminUserName' and 'AdminPassword')
+$Secret = ConvertFrom-Json $SecretValue.SecretString
+
+# Define Variables (fetched from Secrets Manager)
 $SourcePath = "C:\manas\"
-$MachineNames = "EC2AMAZ-QI688ID"
-$AdminUserName = "Administrator" 
-$AdminPassword = "kIgzNRLn)ZaAW597%Abvr8(a=@J5G?P&"
+$MachineNames = "EC2AMAZ-52FKVRM"
+$AdminUserName = $Secret.AdminUserName  # Set from AWS Secret
+$AdminPassword = $Secret.AdminPassword  # Set from AWS Secret
 $TargetPath = "C:\Target\"
 $CleanTargetBeforeCopy = $true
 $CopyFilesInParallel = $false
@@ -114,7 +127,6 @@ function Copy-WebFiles {
 
     # If CleanTargetBeforeCopy is true, we delete the target folder before copying
     if ($CleanTargetBeforeCopy) {
-		Write-Output "clean"
         Write-Host "Cleaning target directory: $Destination"
         Remove-Item -Recurse -Force -Path $Destination
     }
@@ -136,14 +148,12 @@ $MachineNames.Split(',') | ForEach-Object {
 
     if ($CopyFilesInParallel) {
         # Using background jobs to copy files in parallel
-		Write-Output "parallel"
         Start-Job -ScriptBlock {
             param($Source, $Destination, $Machine)
             Copy-WebFiles -Source $Source -Destination $Destination -Machine $Machine
         } -ArgumentList $SourcePath, $TargetPath, $Machine
     } else {
         # Perform copying sequentially
-		Write-Output "single"
         Copy-WebFiles -Source $SourcePath -Destination $TargetPath -Machine $Machine
     }
 }
@@ -152,7 +162,6 @@ $MachineNames.Split(',') | ForEach-Object {
 if ($CopyFilesInParallel) {
     Get-Job | Wait-Job
 }
-
 
 
 =========================================================================================================================================================================
