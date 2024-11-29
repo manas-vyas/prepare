@@ -295,3 +295,50 @@ if ($DeployInParallel) {
 }
 
 =========================================================================================================================================================================
+
+
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      # Specify the runtime you are using, for example, Node.js or Python
+      # nodejs: 14
+    commands:
+      # Any additional commands required to set up the environment
+      echo "Installing dependencies..."
+
+  pre_build:
+    commands:
+      # Replacing the appspec.yml in the root directory with the one in CD-appspec folder
+      echo "Replacing appspec.yml in the root directory..."
+      cp CD-appspec/appspec.yml appspec.yml  # Replace root appspec.yml with the one in the CD-appspec folder
+
+  build:
+    commands:
+      echo "Building the source code..."
+      # You can run build commands if required, for example:
+      # npm install
+      # npm run build
+
+  post_build:
+    commands:
+      echo "Build completed successfully!"
+      # Ensure the changes (appspec.yml replacement) are included in the output artifact
+      echo "Preparing source code for output artifact..."
+  
+artifacts:
+  files:
+    - '**/*'  # Include everything from the source directory, including the updated appspec.yml
+  discard-paths: no  # Retain the directory structure in the artifact
+
+
+
+
+
+
+
+
+
+
