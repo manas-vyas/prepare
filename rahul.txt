@@ -333,6 +333,580 @@ artifacts:
     - '**/*'  # Include everything from the source directory, including the updated appspec.yml
   discard-paths: no  # Retain the directory structure in the artifact
 
+===========================================================================================================================================
+
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC with Subnet, Internet Gateway, Route Table and Route for North Virginia (us-east-1)
+
+Resources:
+  # Create VPC
+  MigrationVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"  # Define your VPC CIDR block
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: MigrationVPC
+
+  # Create a public subnet in the VPC
+  MigrationSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: "10.0.1.0/24"  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1a"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationSubnet-us-east-1a
+          
+  MigrationSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: "10.0.2.0/24"  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1b"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationSubnet-us-east-1b
+          
+  MigrationSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: "10.0.3.0/24"  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1c"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationSubnet-us-east-1c
+          
+  MigrationSubnetD:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: "10.0.4.0/24"  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1d"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationSubnet-us-east-1d
+
+  MigrationSubnetE:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: "10.0.5.0/24"  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1e"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationSubnet-us-east-1e
+          
+  MigrationSubnetF:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: "10.0.6.0/24"  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1f"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationSubnet-us-east-1f
+          
+
+  # Create an internet gateway
+  MigrationInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MigrationInternetGateway
+
+  # Attach the internet gateway to the VPC
+  AttachInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MigrationVPC
+      InternetGatewayId: !Ref MigrationInternetGateway
+
+  # Create a route table for public subnet
+  MigrationPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MigrationVPC
+      Tags:
+        - Key: Name
+          Value: MigrationPrivateRouteTable
+
+  # Create a default route to the internet (0.0.0.0/0) via the Internet Gateway
+  MyRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref MigrationInternetGateway
+
+  # Associate the route table with the subnet
+  MigrationSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationSubnetA
+      RouteTableId: !Ref MigrationPrivateRouteTable
+
+  MigrationSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationSubnetB
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      
+  MigrationSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationSubnetC
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      
+  MigrationSubnetDRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationSubnetD
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      
+  MigrationSubnetERouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationSubnetE
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      
+  MigrationSubnetFRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationSubnetF
+      RouteTableId: !Ref MigrationPrivateRouteTable
+
+
+
+
+Outputs:
+  VPCId:
+    Description: "VPC ID"
+    Value: !Ref MigrationVPC
+    Export: 
+      Name: MigrationVPC
+
+  SubnetIdA:
+    Description: "Subnet ID"
+    Value: !Ref MigrationSubnetA
+    Export: 
+      Name: MigrationSubnetA
+    
+  SubnetIdB:
+    Description: "Subnet ID"
+    Value: !Ref MigrationSubnetB
+    Export: 
+      Name: MigrationSubnetB
+   
+  SubnetIdC:
+    Description: "Subnet ID"
+    Value: !Ref MigrationSubnetC
+    Export: 
+      Name: MigrationSubnetC
+    
+  SubnetIdD:
+    Description: "Subnet ID"
+    Value: !Ref MigrationSubnetD
+    Export: 
+      Name: MigrationSubnetD
+    
+  SubnetIdE:
+    Description: "Subnet ID"
+    Value: !Ref MigrationSubnetE
+    Export: 
+      Name: MigrationSubnetE
+    
+  SubnetIdF:
+    Description: "Subnet ID"
+    Value: !Ref MigrationSubnetF
+    Export: 
+      Name: MigrationSubnetF
+
+#  InternetGatewayId:
+#    Description: "Internet Gateway ID"
+#    Value: !Ref MyInternetGateway
+
+  RouteTableId:
+    Description: "Route Table ID"
+    Value: !Ref MigrationPrivateRouteTable
+    
+    
+    
+============================================================
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  MigrationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: my new SSH SG
+      VpcId: !ImportValue MigrationVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.0.0/16
+          
+
+  # Replication Subnet Group
+  DMSReplicationSubnetGroup:
+    Type: AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupIdentifier: MyReplicationSubnetGroup
+      ReplicationSubnetGroupDescription: Subnet group for DMS replication instance
+      SubnetIds:
+        - !ImportValue MigrationSubnetA
+        - !ImportValue MigrationSubnetB
+        - !ImportValue MigrationSubnetC
+        - !ImportValue MigrationSubnetD
+        - !ImportValue MigrationSubnetE
+        - !ImportValue MigrationSubnetF
+  
+    # Replication Instance
+  DMSReplicationInstance:
+    Type: AWS::DMS::ReplicationInstance
+    Properties: 
+      ReplicationInstanceIdentifier: MigrationReplicationInstance
+      ReplicationInstanceClass: dms.t2.micro
+      EngineVersion: "3.5.2"
+      MultiAZ: false
+      AllocatedStorage: 20
+      NetworkType: "IPv4" 
+      ReplicationSubnetGroupIdentifier: !Ref DMSReplicationSubnetGroup
+      PubliclyAccessible: false
+      AvailabilityZone: us-east-1a # Specify your desired AZ     
+      VpcSecurityGroupIds:
+        - !Ref MigrationSecurityGroup 
+        
+    # Source Endpoint (for the database you're migrating from)
+  DMSSourceEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointIdentifier: MigrationSourceEndpoint
+      EndpointType: source
+      EngineName: mysql # Change to the type of your source database (e.g., 'postgres', 'oracle', etc.)
+      Username: admin # Your database username
+      Password: manas123 #!Sub "{{resolve:secretsmanager:your-secrets-manager-secret:SecretString:password}}"
+      ServerName: database-1.c7qiu66yolzn.us-east-1.rds.amazonaws.com # The source DB hostname
+      Port: 3306 # The port of your source DB
+      SslMode: none
+      DatabaseName: testDB # Name of the source database
+
+  # Target Endpoint (for the database you're migrating to)
+  DMSTargetEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointIdentifier: MigrationTargetEndpoint
+      EndpointType: target
+      EngineName: mysql # Change to the type of your target database (e.g., 'postgres', 'oracle', etc.)
+      Username: admin # Your target database username
+      Password: manas123 #!Sub "{{resolve:secretsmanager:your-secrets-manager-secret:SecretString:password}}"
+      ServerName: database-2.c7qiu66yolzn.us-east-1.rds.amazonaws.com # The target DB hostname
+      Port: 3306 # The port of your target DB
+      SslMode: none
+      DatabaseName: demodb # Name of the target database      
+
+Outputs:
+  SourceEndpointIdentifier:
+    Description: "Source Endpoint Identifier"
+    Value: !Ref DMSSourceEndpoint
+    Export: 
+      Name: DMSSourceEndpointARN
+
+  TargetEndpointIdentifier:
+    Description: "Target Endpoint Identifier"
+    Value: !Ref DMSTargetEndpoint
+    Export: 
+      Name: DMSTargetEndpointARN
+      
+  ReplicationInstanceIdentifier:
+    Description: "Replication Instance Identifier"
+    Value: !Ref DMSReplicationInstance
+    Export: 
+      Name: DMSReplicationInstanceARN
+
+
+==================================================================================================
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  # Database Migration Task
+  DMSMigrationTask:
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      ReplicationTaskIdentifier: MigrationTask
+      MigrationType: full-load
+      SourceEndpointArn: !ImportValue DMSSourceEndpointARN
+      TargetEndpointArn: !ImportValue DMSTargetEndpointARN
+      ReplicationInstanceArn: !ImportValue DMSReplicationInstanceARN
+      ReplicationTaskSettings:      
+          !Sub      
+              - |-      
+                  {      
+                      "TargetMetadata": {      
+                          "TargetSchema": "",      
+                          "SupportLobs": true,           
+                          "FullLobMode": false,           
+                          "LobChunkSize": 64,           
+                          "LimitedSizeLobMode": true,           
+                          "LobMaxSize": 32,           
+                          "InlineLobMaxSize": 0,           
+                          "LoadMaxFileSize": 0,           
+                          "ParallelLoadThreads": 0,           
+                          "ParallelLoadBufferSize": 0,           
+                          "BatchApplyEnabled": false,           
+                          "TaskRecoveryTableEnabled": false,           
+                          "ParallelLoadQueuesPerThread": 0,           
+                          "ParallelApplyThreads": 0,           
+                          "ParallelApplyBufferSize": 0,           
+                          "ParallelApplyQueuesPerThread": 0           
+                      },           
+                      "FullLoadSettings": {           
+                          "TargetTablePrepMode": "DROP_AND_CREATE",           
+                          "CreatePkAfterFullLoad": false,           
+                          "StopTaskCachedChangesApplied": false,           
+                          "StopTaskCachedChangesNotApplied": false,           
+                          "MaxFullLoadSubTasks": 8,           
+                          "TransactionConsistencyTimeout": 600,           
+                          "CommitRate": 10000           
+                      },           
+                      "Logging": {           
+                          "EnableLogging": true,           
+                          "LogComponents": [           
+                              {           
+                                  "Id": "SOURCE_UNLOAD",           
+                                  "Severity": "LOGGER_SEVERITY_DEFAULT"           
+                              },           
+                              {           
+                                  "Id": "SOURCE_CAPTURE",           
+                                  "Severity": "LOGGER_SEVERITY_DEFAULT"           
+                              },           
+                              {           
+                                  "Id": "TARGET_LOAD",           
+                                  "Severity": "LOGGER_SEVERITY_DEFAULT"           
+                              },           
+                              {           
+                                  "Id": "TARGET_APPLY",           
+                                  "Severity": "LOGGER_SEVERITY_DEFAULT"           
+                              },           
+                              {           
+                                  "Id": "TASK_MANAGER",           
+                                  "Severity": "LOGGER_SEVERITY_DEFAULT"           
+                              }           
+                          ],           
+                          "CloudWatchLogGroup": null,           
+                          "CloudWatchLogStream": null           
+                      },           
+                      "ControlTablesSettings": {           
+                          "historyTimeslotInMinutes": 5,           
+                          "ControlSchema": "",           
+                          "HistoryTimeslotInMinutes": 5,           
+                          "HistoryTableEnabled": false,           
+                          "SuspendedTablesTableEnabled": false,           
+                          "StatusTableEnabled": false           
+                      },           
+                      "StreamBufferSettings": {           
+                          "StreamBufferCount": 3,           
+                          "StreamBufferSizeInMB": 8,           
+                          "CtrlStreamBufferSizeInMB": 5           
+                      },           
+                      "ChangeProcessingDdlHandlingPolicy": {           
+                          "HandleSourceTableDropped": true,           
+                          "HandleSourceTableTruncated": true,           
+                          "HandleSourceTableAltered": true           
+                      },           
+                      "ErrorBehavior": {           
+                          "DataErrorPolicy": "LOG_ERROR",           
+                          "DataTruncationErrorPolicy": "LOG_ERROR",           
+                          "DataErrorEscalationPolicy": "SUSPEND_TABLE",           
+                          "DataErrorEscalationCount": 0,           
+                          "TableErrorPolicy": "SUSPEND_TABLE",           
+                          "TableErrorEscalationPolicy": "STOP_TASK",           
+                          "TableErrorEscalationCount": 0,           
+                          "RecoverableErrorCount": -1,           
+                          "RecoverableErrorInterval": 5,           
+                          "RecoverableErrorThrottling": true,           
+                          "RecoverableErrorThrottlingMax": 1800,           
+                          "ApplyErrorDeletePolicy": "IGNORE_RECORD",           
+                          "ApplyErrorInsertPolicy": "LOG_ERROR",           
+                          "ApplyErrorUpdatePolicy": "LOG_ERROR",           
+                          "ApplyErrorEscalationPolicy": "LOG_ERROR",           
+                          "ApplyErrorEscalationCount": 0,           
+                          "ApplyErrorFailOnTruncationDdl": false,           
+                          "FullLoadIgnoreConflicts": true,           
+                          "FailOnTransactionConsistencyBreached": false,           
+                          "FailOnNoTablesCaptured": false           
+                      },           
+                      "ChangeProcessingTuning": {           
+                          "BatchApplyPreserveTransaction": true,           
+                          "BatchApplyTimeoutMin": 1,           
+                          "BatchApplyTimeoutMax": 30,           
+                          "BatchApplyMemoryLimit": 500,           
+                          "BatchSplitSize": 0,           
+                          "MinTransactionSize": 1000,           
+                          "CommitTimeout": 1,           
+                          "MemoryLimitTotal": 1024,           
+                          "MemoryKeepTime": 60,           
+                          "StatementCacheSize": 50           
+                      },           
+                      "PostProcessingRules": null,           
+                      "CharacterSetSettings": null,           
+                      "LoopbackPreventionSettings": null,           
+                      "BeforeImageSettings": null           
+                  }                                   
+              -           
+                  enable_logging: true,           
+                  support_lobs: true          
+      TableMappings:           
+          !Sub           
+              - |-           
+                  {           
+                      "rules": [           
+                          {           
+                              "rule-type": "selection",           
+                              "rule-id": "1",           
+                              "rule-action": "include",           
+                              "object-locator": {           
+                                  "schema-name": "testDB",           
+                                  "table-name": "%"           
+                              },           
+                              "rule-name": "1"           
+                          }           
+                      ]           
+                  }                                   
+              -           
+                  db_schema_name: "testDB"                 # which will be migrated           
+     
+     
+     
+     
+     
+     ===================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an Oracle RDS instance.
+
+Parameters:
+  DBInstanceIdentifier:
+    Type: String
+    Default: MyOracleDB
+    Description: The database instance identifier.
+
+  DBName:
+    Type: String
+    Default: MyDatabase
+    Description: The name of the database to create.
+
+  DBInstanceClass:
+    Type: String
+    Default: db.m5.large
+    AllowedValues:
+      - db.m5.large
+      - db.m5.xlarge
+      - db.m5.2xlarge
+      - db.m5.4xlarge
+    Description: The RDS instance type.
+
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 65536
+    Description: The allocated storage size in GB.
+
+  EngineVersion:
+    Type: String
+    Default: 19.0.0.0.ru-2024-10.rur-2024-10.r1
+    Description: The Oracle database engine version.
+
+  MasterUsername:
+    Type: String
+    Default: admin
+    NoEcho: true
+    Description: The master username for the database.
+
+  MasterUserPassword:
+    Type: String
+    NoEcho: true
+    Description: The master user password for the database.
+
+  MultiAZ:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Specifies if the database instance is a Multi-AZ deployment.
+
+  BackupRetentionPeriod:
+    Type: Number
+    Default: 7
+    MinValue: 0
+    MaxValue: 35
+    Description: The number of days to retain backups.
+
+Resources:
+  OracleRDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: my new SSH SG
+      VpcId: !ImportValue MigrationVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.0.0/16
+          
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      DBName: !Ref DBName
+      AllocatedStorage: !Ref AllocatedStorage
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: oracle-ee
+      EngineVersion: !Ref EngineVersion
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      MultiAZ: !Ref MultiAZ
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      VPCSecurityGroups: !Ref OracleRDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+      StorageType: gp2
+      StorageEncrypted: true
+      DeletionProtection: true
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Oracle RDS instance
+      SubnetIds:
+        - !ImportValue MigrationSubnetA
+        - !ImportValue MigrationSubnetB
+        - !ImportValue MigrationSubnetC
+        - !ImportValue MigrationSubnetD
+        - !ImportValue MigrationSubnetE
+        - !ImportValue MigrationSubnetF
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: The connection endpoint for the RDS database instance.
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  RDSInstancePort:
+    Description: The port for the RDS database instance.
+    Value: !GetAtt RDSInstance.Endpoint.Port
 
 
 
