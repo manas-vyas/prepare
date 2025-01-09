@@ -1,0 +1,293 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC with Subnet, Internet Gateway, Route Table and Route for North Virginia (us-east-1)
+
+
+Parameters:
+  VpcBlock:
+    Type: String
+    #Default: 10.0.0.0/16
+    Description: VPC CIDR Tange
+      
+  SubnetA01PublicBlock:
+    Type: String
+    #Default: 10.0.1.0/24
+    Description: CidrBlock for Subnet 01 within the VPC.
+
+  SubnetC01PublicBlock:
+    Type: String
+    #Default: 10.0.1.0/24
+    Description: CidrBlock for Subnet 01 within the VPC.
+
+  SubnetE01PublicBlock:
+    Type: String
+    #Default: 10.0.1.0/24
+    Description: CidrBlock for Subnet 01 within the VPC. 
+
+  SubnetA01PrivateBlock:
+    Type: String
+    #Default: 10.0.1.0/24
+    Description: CidrBlock for Subnet 01 within the VPC.
+
+  SubnetC01PrivateBlock:
+    Type: String
+    #Default: 10.0.1.0/24
+    Description: CidrBlock for Subnet 01 within the VPC.
+
+  SubnetE01PrivateBlock:
+    Type: String
+    #Default: 10.0.1.0/24
+    Description: CidrBlock for Subnet 01 within the VPC. 
+   
+
+Resources:
+  # Create VPC
+  MigrationVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcBlock                                        # Define your VPC CIDR block
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: MigrationVPC
+
+  # Create a public subnet in the VPC
+  MigrationPublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: !Ref SubnetA01PublicBlock # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1a"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationPublicSubnet-us-east-1a
+          
+          
+  MigrationPublicSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: !Ref SubnetC01PublicBlock  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1c"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationPublicSubnet-us-east-1c
+          
+
+
+  MigrationPublicSubnetE:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: !Ref SubnetE01PublicBlock  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1e"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationPublicSubnet-us-east-1e
+          
+          
+          
+  # Create a public subnet in the VPC
+  MigrationPrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: !Ref SubnetA01PrivateBlock # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1a"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationPrivateSubnet-us-east-1a
+          
+          
+  MigrationPrivateSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: !Ref SubnetC01PrivateBlock  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1c"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationPrivateSubnet-us-east-1c
+          
+
+
+  MigrationPrivateSubnetE:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MigrationVPC
+      CidrBlock: !Ref SubnetE01PrivateBlock  # Define the subnet CIDR block
+      AvailabilityZone: "us-east-1e"  # North Virginia AZ (can be adjusted)
+      MapPublicIpOnLaunch: 'false'  # Ensure instances get a public IP
+      Tags:
+        - Key: Name
+          Value: MigrationPrivateSubnet-us-east-1e
+          
+          
+
+  # Create an internet gateway
+  MigrationInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MigrationInternetGateway
+
+  # Attach the internet gateway to the VPC
+  AttachInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MigrationVPC
+      InternetGatewayId: !Ref MigrationInternetGateway
+      
+  # Create a EIP for NatGateway    
+  MigrationNATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc     
+      
+      
+  # Create a NatGateway for private subnet   
+  MigrationNATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt MigrationNATGatewayEIP.AllocationId
+      SubnetId: !Ref MigrationPublicSubnetA
+      Tags:
+      - Key: Name
+        Value: MigrationNATGateway
+        
+  # Create a route table for public subnet
+  MigrationPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MigrationVPC
+      Tags:
+        - Key: Name
+          Value: MigrationPublicRouteTable
+          
+          
+  MigrationPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MigrationVPC
+      Tags:
+        - Key: Name
+          Value: MigrationPrivateRouteTable
+        
+              
+  # Create a default route to the internet (0.0.0.0/0) via the NetGateway     
+  MigrationRouteNATGateway:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref MigrationNATGateway     
+           
+
+
+  # Create a default route to the internet (0.0.0.0/0) via the Internet Gateway
+  MigrationpublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref MigrationPublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref MigrationInternetGateway
+          
+
+  # Associate the route table with the subnet
+  MigrationPublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationPublicSubnetA
+      RouteTableId: !Ref MigrationPublicRouteTable
+
+      
+  MigrationPublicSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationPublicSubnetC
+      RouteTableId: !Ref MigrationPublicRouteTable
+      
+      
+  MigrationPublicSubnetERouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationPublicSubnetE
+      RouteTableId: !Ref MigrationPublicRouteTable
+      
+  # Associate the route table with the subnet
+  MigrationPrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationPrivateSubnetA
+      RouteTableId: !Ref MigrationPrivateRouteTable
+
+      
+  MigrationPrivateSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationPrivateSubnetC
+      RouteTableId: !Ref MigrationPrivateRouteTable
+      
+      
+  MigrationPrivateSubnetERouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MigrationPrivateSubnetE
+      RouteTableId: !Ref MigrationPrivateRouteTable      
+      
+      
+Outputs:
+  VPCId:
+    Description: "VPC ID"
+    Value: !Ref MigrationVPC
+    Export: 
+      Name: MigrationVPC
+
+  SubnetIdPublicA:
+    Description: "Subnet ID"
+    Value: !Ref MigrationPublicSubnetA
+    Export: 
+      Name: MigrationPublicSubnetA
+    
+   
+  SubnetIdPublicC:
+    Description: "Subnet ID"
+    Value: !Ref MigrationPublicSubnetC
+    Export: 
+      Name: MigrationPublicSubnetC
+    
+   
+  SubnetIdPublicE:
+    Description: "Subnet ID"
+    Value: !Ref MigrationPublicSubnetE
+    Export: 
+      Name: MigrationPublicSubnetE
+      
+  SubnetIdPrivateA:
+    Description: "Subnet ID"
+    Value: !Ref MigrationPrivateSubnetA
+    Export: 
+      Name: MigrationPrivateSubnetA
+    
+   
+  SubnetIdPrivateC:
+    Description: "Subnet ID"
+    Value: !Ref MigrationPrivateSubnetC
+    Export: 
+      Name: MigrationPrivateSubnetC
+    
+   
+  SubnetIdPrivateE:
+    Description: "Subnet ID"
+    Value: !Ref MigrationPublicSubnetE
+    Export: 
+      Name: MigrationPrivateSubnetE
+    
+    
+    

@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an Oracle RDS instance.
+
+Parameters:
+  DBInstanceIdentifier:
+    Type: String
+    Default: MyOracleDB
+    Description: The database instance identifier.
+
+  DBName:
+    Type: String
+    Default: MyDatabase
+    Description: The name of the database to create.
+
+  DBInstanceClass:
+    Type: String
+    Default: db.m5.large
+    AllowedValues:
+      - db.m5.large
+      - db.m5.xlarge
+      - db.m5.2xlarge
+      - db.m5.4xlarge
+    Description: The RDS instance type.
+
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 65536
+    Description: The allocated storage size in GB.
+
+  EngineVersion:
+    Type: String
+    Default: 19.0.0.0.ru-2024-10.rur-2024-10.r1
+    Description: The Oracle database engine version.
+
+  MasterUsername:
+    Type: String
+    Default: admin
+    NoEcho: true
+    Description: The master username for the database.
+
+  MasterUserPassword:
+    Type: String
+    NoEcho: true
+    Description: The master user password for the database.
+
+  MultiAZ:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    Description: Specifies if the database instance is a Multi-AZ deployment.
+
+  BackupRetentionPeriod:
+    Type: Number
+    Default: 7
+    MinValue: 0
+    MaxValue: 35
+    Description: The number of days to retain backups.
+
+Resources:
+  OracleRDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: my new SSH SG
+      VpcId: !ImportValue MigrationVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.0.0/16
+          
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Oracle RDS instance
+      SubnetIds:
+        - !ImportValue MigrationPrivateSubnetA
+        - !ImportValue MigrationPrivateSubnetC
+        - !ImportValue MigrationPrivateSubnetE
+          
+  OracleRDSParameterGroup:
+    Type: "AWS::RDS::DBParameterGroup"
+    Properties:
+      Description: "Parameter group for Oracle RDS"
+      Family: "oracle-ee-19"
+      Parameters:
+        optimizer_mode: "ALL_ROWS"
+        open_cursors: "300"
+        cursor_sharing: "FORCE"
+          
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      DBName: !Ref DBName
+      AllocatedStorage: !Ref AllocatedStorage
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: oracle-ee
+      EngineVersion: !Ref EngineVersion
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      MultiAZ: !Ref MultiAZ
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      VPCSecurityGroups: !Ref OracleRDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBParameterGroupName: !Ref OracleRDSParameterGroup
+      PubliclyAccessible: false
+      StorageType: gp2
+      StorageEncrypted: true
+      DeletionProtection: true
+
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: The connection endpoint for the RDS database instance.
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  RDSInstancePort:
+    Description: The port for the RDS database instance.
+    Value: !GetAtt RDSInstance.Endpoint.Port

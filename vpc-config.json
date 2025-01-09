@@ -1,0 +1,12 @@
+{
+  "Parameters" : {
+    "VpcBlock" : "10.0.0.0/16",
+    "SubnetA01PublicBlock"  : "10.0.1.0/24",
+	"SubnetC01PublicBlock"  : "10.0.2.0/24",
+	"SubnetE01PublicBlock"  : "10.0.3.0/24",
+    "SubnetA01PrivateBlock" : "10.0.4.0/24",
+	"SubnetC01PrivateBlock" : "10.0.5.0/24",
+	"SubnetE01PrivateBlock" : "10.0.6.0/24"
+	
+  }
+}
