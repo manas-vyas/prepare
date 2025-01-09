@@ -4,29 +4,22 @@ Description: CloudFormation template to create an Oracle RDS instance.
 Parameters:
   DBInstanceIdentifier:
     Type: String
-    Default: MyOracleDB
+    Default: MigrationOracleDB
     Description: The database instance identifier.
 
   DBName:
     Type: String
-    Default: MyDatabase
+    Default: oracledb
     Description: The name of the database to create.
 
   DBInstanceClass:
     Type: String
-    Default: db.m5.large
-    AllowedValues:
-      - db.m5.large
-      - db.m5.xlarge
-      - db.m5.2xlarge
-      - db.m5.4xlarge
+    Default: db.t3.small
     Description: The RDS instance type.
 
   AllocatedStorage:
     Type: Number
     Default: 20
-    MinValue: 20
-    MaxValue: 65536
     Description: The allocated storage size in GB.
 
   EngineVersion:
@@ -48,17 +41,58 @@ Parameters:
   MultiAZ:
     Type: String
     Default: true
-    AllowedValues:
-      - true
-      - false
     Description: Specifies if the database instance is a Multi-AZ deployment.
 
   BackupRetentionPeriod:
     Type: Number
     Default: 7
-    MinValue: 0
-    MaxValue: 35
     Description: The number of days to retain backups.
+    
+  StorageType:
+    Type: String
+    Default: gp3
+    Description: StorageType
+    
+  Iops:
+    Type: Number
+    Default: 20000
+    Description: Iops
+    
+  StorageThroughput:
+    Type: Number
+    Default: 4000
+    Description: StorageThroughput
+    
+    
+  PerformanceInsightsRetentionPeriod:
+    Type: Number
+    Default: 7
+    Description: PerformanceInsightsRetentionPeriod
+    
+
+  PreferredBackupWindow:
+    Type: String
+    Default: "03:00-06:00"
+    Description: PreferredBackupWindow
+    
+    
+  PreferredMaintenanceWindow:
+    Type: String
+    Default: "Sun:03:00-Sun:04:00"
+    Description: PreferredMaintenanceWindow
+    
+  OptionGroupName:
+    Type: String
+    Default: "default:oracle-ee-19"
+    Description: OptionGroupName
+    
+    
+  CACertificateIdentifier:
+    Type: String
+    Default: "rds-ca-rsa4096-g1"
+    Description: CACertificateIdentifier
+
+
 
 Resources:
   OracleRDSSecurityGroup:
@@ -94,25 +128,43 @@ Resources:
   RDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: !Ref DBInstanceIdentifier
-      DBName: !Ref DBName
-      AllocatedStorage: !Ref AllocatedStorage
-      DBInstanceClass: !Ref DBInstanceClass
       Engine: oracle-ee
       EngineVersion: !Ref EngineVersion
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
       MasterUsername: !Ref MasterUsername
       MasterUserPassword: !Ref MasterUserPassword
-      MultiAZ: !Ref MultiAZ
-      BackupRetentionPeriod: !Ref BackupRetentionPeriod
-      VPCSecurityGroups: !Ref OracleRDSSecurityGroup
-      DBSubnetGroupName: !Ref DBSubnetGroup
-      DBParameterGroupName: !Ref OracleRDSParameterGroup
-      PubliclyAccessible: false
-      StorageType: gp2
+      DBInstanceClass: !Ref DBInstanceClass
+      StorageType: !Ref StorageType
+      AllocatedStorage: !Ref AllocatedStorage
+      Iops: !Ref Iops
+      StorageThroughput: !Ref StorageThroughput
       StorageEncrypted: true
-      DeletionProtection: true
-
-
+      MultiAZ: !Ref MultiAZ
+      NetworkType: IPv4
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+      VPCSecurityGroups: !Ref OracleRDSSecurityGroup
+      CACertificateIdentifier: !Ref CACertificateIdentifier
+      Port: 1521
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: !Ref PerformanceInsightsRetentionPeriod
+      PerformanceInsightsKMSKeyId: alias/aws/rds     
+      DBName: !Ref DBName
+      DBParameterGroupName: !Ref OracleRDSParameterGroup
+      OptionGroupName: !Ref OptionGroupName
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      PreferredBackupWindow: !Ref PreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+      KmsKeyId: alias/aws/rds
+      CopyTagsToSnapshot: true
+      EnableCloudwatchLogsExports:
+        - "alert"
+        - "audit"
+        - "listener"
+        - "trace"     
+      DeletionProtection: false
+      
+      
 Outputs:
   RDSInstanceEndpoint:
     Description: The connection endpoint for the RDS database instance.
