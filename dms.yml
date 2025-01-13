@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  MigrationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: my new SSH SG
+      VpcId: !ImportValue MigrationVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.0.0/16
+          
+
+  # Replication Subnet Group
+  DMSReplicationSubnetGroup:
+    Type: AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupIdentifier: MyReplicationSubnetGroup
+      ReplicationSubnetGroupDescription: Subnet group for DMS replication instance
+      SubnetIds:
+        - !ImportValue MigrationSubnetA
+        - !ImportValue MigrationSubnetB
+        - !ImportValue MigrationSubnetC
+        - !ImportValue MigrationSubnetD
+        - !ImportValue MigrationSubnetE
+        - !ImportValue MigrationSubnetF
+  
+    # Replication Instance
+  DMSReplicationInstance:
+    Type: AWS::DMS::ReplicationInstance
+    Properties: 
+      ReplicationInstanceIdentifier: MigrationReplicationInstance
+      ReplicationInstanceClass: dms.t2.micro
+      EngineVersion: "3.5.2"
+      MultiAZ: false
+      AllocatedStorage: 20
+      NetworkType: "IPv4" 
+      ReplicationSubnetGroupIdentifier: !Ref DMSReplicationSubnetGroup
+      PubliclyAccessible: false
+      AvailabilityZone: us-east-1a # Specify your desired AZ     
+      VpcSecurityGroupIds:
+        - !Ref MigrationSecurityGroup 
+        
+    # Source Endpoint (for the database you're migrating from)
+  DMSSourceEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointIdentifier: MigrationSourceEndpoint
+      EndpointType: source
+      EngineName: mysql # Change to the type of your source database (e.g., 'postgres', 'oracle', etc.)
+      Username: admin # Your database username
+      Password: manas123 #!Sub "{{resolve:secretsmanager:your-secrets-manager-secret:SecretString:password}}"
+      ServerName: database-1.c7qiu66yolzn.us-east-1.rds.amazonaws.com # The source DB hostname
+      Port: 3306 # The port of your source DB
+      SslMode: none
+      KmsKeyId: String,
+      DatabaseName: testDB # Name of the source database
+
+  # Target Endpoint (for the database you're migrating to)
+  DMSTargetEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointIdentifier: MigrationTargetEndpoint
+      EndpointType: target
+      EngineName: mysql # Change to the type of your target database (e.g., 'postgres', 'oracle', etc.)
+      Username: admin # Your target database username
+      Password: manas123 #!Sub "{{resolve:secretsmanager:your-secrets-manager-secret:SecretString:password}}"
+      ServerName: database-2.c7qiu66yolzn.us-east-1.rds.amazonaws.com # The target DB hostname
+      Port: 3306 # The port of your target DB
+      SslMode: none
+      KmsKeyId: String,
+      DatabaseName: demodb # Name of the target database      
+
+Outputs:
+  SourceEndpointIdentifier:
+    Description: "Source Endpoint Identifier"
+    Value: !Ref DMSSourceEndpoint
+    Export: 
+      Name: DMSSourceEndpointARN
+
+  TargetEndpointIdentifier:
+    Description: "Target Endpoint Identifier"
+    Value: !Ref DMSTargetEndpoint
+    Export: 
+      Name: DMSTargetEndpointARN
+      
+  ReplicationInstanceIdentifier:
+    Description: "Replication Instance Identifier"
+    Value: !Ref DMSReplicationInstance
+    Export: 
+      Name: DMSReplicationInstanceARN
