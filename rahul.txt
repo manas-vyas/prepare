@@ -932,3 +932,6 @@ Databases:	 Oracle, MS Access
                                                                  TDA, FDA, PODA, NERs, BSVW.
 
 
+Migrating the CI/CD pipeline from Microsoft Azure to AWS. This involves understanding Azure pipeline task scripts and replicating them in PowerShell. The PowerShell scripts will be used to create a CI/CD pipeline in AWS, leveraging AWS Secrets Manager for secure credential storage. Additionally, a Lambda function will be implemented to automate IAM user access key rotation and update the secrets in AWS Secrets Manager
+
+Develop a CloudFormation template for RDS and AWS DMS services. Automate the infrastructure provisioning by integrating AWS Pipeline with CloudFormation to streamline the deployment of RDS and DMS services
