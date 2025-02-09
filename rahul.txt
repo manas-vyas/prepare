@@ -911,8 +911,24 @@ Outputs:
 
 
 
+I joined Persistent three months ago and have already relocated from Pune to Indore. Due to this recent move, I am unable to relocate again on short notice
 
 
+•	Around 2.2 years of experience with Oracle JD Edwards Enterprise One and one world
+•	Experience in custom reports, programming, documentation, support in different environments
+•	Knowledge & Worked on OMW, DD, TDA, BDA, FDA, RDA, POWER FORM, TABLE    - I/O, TC  NER UTB, UDC, PODA ,BI Publisher and Debugging tools
+•	Good Knowledge on Creating Interactive and Batch Application,
+•	Strong quantitative and analytical skills; Demonstrated leadership and teamwork skills
+•	Good exposure to functional areas like Sales and Distribution
+•	Well-developed interpersonal and communication skills, having dealt with diverse professionals, Clients & team members at global locations
+•	Vibrant team player with belief in taking positive approach towards issue resolution
 
+
+Skillsets
+
+Environment:	JD Edwards Enterprise One World Xe, E1 8.12, E1 9.1
+Databases:	 Oracle, MS Access
+             Tools:                                          JD Edwards Tools OL, BDA, DSTR, UTB, RDA, UDC,        
+                                                                 TDA, FDA, PODA, NERs, BSVW.
 
 
