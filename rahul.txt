@@ -1,3 +1,11 @@
+$accessKey = (aws secretsmanager get-secret-value --secret-id "mytest" --region "us-east-1" --query "SecretString" --output text | ConvertFrom-Json).accesskey
+
+Write-Output $accessKey
+
+
+
+------------------------------------------------------------------
+
 import boto3
 import json
 
