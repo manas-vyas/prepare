@@ -1,3 +1,27 @@
+
+Subject: Completion of AWS Certification and Next Steps
+
+Hi Surabhi Pandharikar,
+
+I have selected the following category to complete my AWS certifications under the role of AWS Solution Architect – Sr. Developer (CL – 3, Grade – 5.1):
+
+AWS Certified Solutions Architect – Associate
+
+AWS Certified Developer – Associate
+
+I am pleased to inform you that I have successfully completed the AWS Certified Solutions Architect – Associate certification, and it has been uploaded to TMS.
+
+Could you please advise on the next steps I need to follow and the timeline I should adhere to for completing the AWS Certified Developer – Associate certification?
+
+Thank you,
+[Your Name]
+
+
+
+
+
+===================================================================================
+
 $accessKey = (aws secretsmanager get-secret-value --secret-id "mytest" --region "us-east-1" --query "SecretString" --output text | ConvertFrom-Json).accesskey
 
 Write-Output $accessKey
